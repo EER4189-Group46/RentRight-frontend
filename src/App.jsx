@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -21,9 +21,34 @@ import {
 } from 'lucide-react';
 
 function Navigation({ activeTab, setActiveTab, setSelectedItemId }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, token, isAuthenticated } = useAuth();
   const isProvider = user?.role === 'provider';
   const isRenter = user?.role === 'renter';
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+
+  useEffect(() => {
+    if (isAuthenticated && isProvider && token) {
+      const checkPending = async () => {
+        try {
+          const res = await fetch('/api/rental-requests/provider', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.success && Array.isArray(data.data)) {
+            const pending = data.data.filter((r) => r.status === 'pending').length;
+            setPendingRequestsCount(pending);
+          }
+        } catch {
+          // ignore background notification failure
+        }
+      };
+      checkPending();
+      const interval = setInterval(checkPending, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setPendingRequestsCount(0);
+    }
+  }, [isAuthenticated, isProvider, token, activeTab]);
 
   const handleNav = (tab) => {
     setSelectedItemId(null);
@@ -90,6 +115,11 @@ function Navigation({ activeTab, setActiveTab, setSelectedItemId }) {
               >
                 <Calendar className="w-4 h-4 text-emerald-600" />
                 <span>Requests</span>
+                {pendingRequestsCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white animate-pulse">
+                    {pendingRequestsCount}
+                  </span>
+                )}
               </button>
 
               <button
@@ -207,7 +237,7 @@ export default function App() {
         />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-          {activeTab === 'browse' && (
+          {(activeTab === 'browse' || activeTab === 'home') && (
             <BrowsePage
               onSelectItem={handleSelectItem}
               onNavigate={setActiveTab}
@@ -222,8 +252,19 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'my-items' && <MyItemsPage onNavigate={setActiveTab} />}
-          {activeTab === 'requests' && <RentalRequestsPage onNavigate={setActiveTab} />}
+          {activeTab === 'my-items' && (
+            <MyItemsPage
+              onNavigate={setActiveTab}
+              onSelectItem={handleSelectItem}
+            />
+          )}
+          {(activeTab === 'requests' || activeTab === 'my-requests') && (
+            <RentalRequestsPage
+              onNavigate={setActiveTab}
+              onSelectItem={handleSelectItem}
+              initialView={activeTab === 'my-requests' ? 'mine' : undefined}
+            />
+          )}
           {activeTab === 'payments' && <PaymentHistoryPage onNavigate={setActiveTab} />}
           {activeTab === 'earnings' && <EarningsPage onNavigate={setActiveTab} />}
           {activeTab === 'login' && <LoginPage onNavigate={setActiveTab} />}

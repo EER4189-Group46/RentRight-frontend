@@ -90,7 +90,7 @@ export default function ProfilePage({ onNavigate }) {
 
   const handleLogout = () => {
     logout();
-    if (onNavigate) onNavigate('home');
+    if (onNavigate) onNavigate('browse');
   };
 
   return (

@@ -17,7 +17,9 @@ import {
   Clock,
   DollarSign,
   Send,
-  ArrowRight
+  ArrowRight,
+  Package,
+  Edit3
 } from 'lucide-react';
 
 export default function ItemDetailsPage({ itemId, onBack, onNavigate }) {
@@ -295,8 +297,34 @@ export default function ItemDetailsPage({ itemId, onBack, onNavigate }) {
               </div>
             </div>
 
-            {/* Request Booking Form */}
-            {requestSent ? (
+            {/* Request Booking Form or Owner View */}
+            {user?.id === item.provider_id ? (
+              <div className="p-5 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-3 text-center">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+                  <Package className="w-5 h-5" />
+                </div>
+                <h4 className="font-bold text-base text-slate-900">Your Equipment Listing</h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  You are the owner of this rental listing. You can modify pricing, update availability status, or review incoming customer requests in your dashboard.
+                </p>
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate && onNavigate('my-items')}
+                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" /> Manage in My Inventory
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate && onNavigate('requests')}
+                    className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
+                  >
+                    View Incoming Requests
+                  </button>
+                </div>
+              </div>
+            ) : requestSent ? (
               <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-3 text-center">
                 <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
                 <h4 className="font-bold text-base text-emerald-900">Request Sent to Provider!</h4>
@@ -305,7 +333,7 @@ export default function ItemDetailsPage({ itemId, onBack, onNavigate }) {
                 </p>
                 <div className="pt-2 flex flex-col gap-2">
                   <button
-                    onClick={() => onNavigate && onNavigate('my-requests')}
+                    onClick={() => onNavigate && onNavigate('requests')}
                     className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
                   >
                     View My Requests <ArrowRight className="w-3.5 h-3.5" />
