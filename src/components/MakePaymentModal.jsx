@@ -14,13 +14,7 @@ import {
   QrCode
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * MAKE PAYMENT MODAL (ACADEMIC STUDENT PROJECT - SIMULATED FLOW)
- * NOTE: This is a simulated checkout flow for demonstration purposes.
- * No real credit card processing or live gateway is involved.
- * ============================================================================
- */
+
 export default function MakePaymentModal({ isOpen, onClose, request, onPaymentSuccess }) {
   const { token } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState('card');
@@ -101,7 +95,7 @@ export default function MakePaymentModal({ isOpen, onClose, request, onPaymentSu
         <div className="bg-amber-50 border-y border-amber-200/60 px-6 py-2.5 flex items-center gap-2 text-xs text-amber-800">
           <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
-            <strong>Academic Demo:</strong> This is a simulated payment gateway. No real money will be charged.
+            <strong></strong> This is a simulated payment gateway. No real money will be charged.
           </span>
         </div>
 

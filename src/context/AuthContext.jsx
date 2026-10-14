@@ -107,6 +107,58 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+   * Request password reset token/link
+   */
+  const forgotPassword = async (email) => {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const result = await res.json();
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to request password reset');
+    }
+    return result;
+  };
+
+  /**
+   * Reset password with reset token
+   */
+  const resetPassword = async (resetToken, newPassword) => {
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetToken, newPassword }),
+    });
+    const result = await res.json();
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to reset password');
+    }
+    return result;
+  };
+
+  /**
+   * Change password for logged-in user
+   */
+  const changePassword = async (currentPassword, newPassword) => {
+    if (!token) throw new Error('Not authenticated');
+    const res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const result = await res.json();
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to change password');
+    }
+    return result;
+  };
+
+  /**
    * Log out user
    */
   const logout = () => {
@@ -125,6 +177,9 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         updateProfile,
+        forgotPassword,
+        resetPassword,
+        changePassword,
         logout,
       }}
     >

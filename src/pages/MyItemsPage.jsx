@@ -14,10 +14,15 @@ import {
   RefreshCw,
   Eye,
   SlidersHorizontal,
-  Building2
+  Building2,
+  Calendar,
+  ToggleLeft,
+  ToggleRight,
+  Clock,
+  ArrowRight
 } from 'lucide-react';
 
-export default function MyItemsPage({ onNavigate }) {
+export default function MyItemsPage({ onNavigate, onSelectItem }) {
   const { user, token, isAuthenticated } = useAuth();
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -30,9 +35,11 @@ export default function MyItemsPage({ onNavigate }) {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [togglingStatusId, setTogglingStatusId] = useState(null);
 
   // Fetch categories
   useEffect(() => {
@@ -94,13 +101,43 @@ export default function MyItemsPage({ onNavigate }) {
 
   const handleItemSaved = (savedItem, isEdit) => {
     if (isEdit) {
-      setItems((prev) => prev.map((item) => (item.id === savedItem.id ? savedItem : item)));
+      setItems((prev) => prev.map((item) => (item.id === savedItem.id ? { ...item, ...savedItem } : item)));
       setActionSuccess(`"${savedItem.name}" was updated successfully.`);
     } else {
       setItems((prev) => [savedItem, ...prev]);
       setActionSuccess(`"${savedItem.name}" was added to your listings.`);
     }
     setTimeout(() => setActionSuccess(''), 4000);
+  };
+
+  // Quick toggle availability status (available <-> unavailable)
+  const handleToggleStatus = async (item) => {
+    const newStatus = item.status === 'available' ? 'unavailable' : 'available';
+    setTogglingStatusId(item.id);
+    try {
+      const res = await fetch(`/api/items/${item.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update item status');
+      }
+
+      setItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, status: newStatus } : i))
+      );
+      setActionSuccess(`Listing "${item.name}" marked as ${newStatus === 'available' ? 'Available' : 'Unavailable'}.`);
+      setTimeout(() => setActionSuccess(''), 4000);
+    } catch (err) {
+      setError(err.message || 'Failed to toggle status.');
+    } finally {
+      setTogglingStatusId(null);
+    }
   };
 
   const handleDeleteItem = async (itemId) => {
@@ -174,11 +211,14 @@ export default function MyItemsPage({ onNavigate }) {
       (item.location && item.location.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory =
       selectedCategory === 'all' || String(item.category_id) === String(selectedCategory);
-    return matchesSearch && matchesCategory;
+    const matchesStatus =
+      statusFilter === 'all' || item.status === statusFilter;
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const availableCount = items.filter((i) => i.status === 'available').length;
-  const unavailableCount = items.filter((i) => i.status === 'unavailable').length;
+  const unavailableCount = items.filter((i) => i.status !== 'available').length;
+  const totalPendingRequests = items.reduce((sum, i) => sum + (i.pending_requests || 0), 0);
 
   return (
     <div className="space-y-8">
@@ -189,17 +229,32 @@ export default function MyItemsPage({ onNavigate }) {
             My Rental Inventory
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Manage your rental listings, availability, and pricing in Sri Lanka
+            Manage your rental listings, availability status, pricing, and incoming customer requests
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-2xl shadow-sm transition"
-        >
-          <Plus className="w-4 h-4" />
-          Add New Item
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onNavigate && onNavigate('requests')}
+            className="inline-flex items-center gap-2 px-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-sm rounded-2xl shadow-sm transition"
+          >
+            <Calendar className="w-4 h-4 text-emerald-600" />
+            <span>Incoming Requests</span>
+            {totalPendingRequests > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500 text-white font-black animate-pulse">
+                {totalPendingRequests}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={handleOpenAddModal}
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-2xl shadow-sm transition"
+          >
+            <Plus className="w-4 h-4" />
+            Add New Item
+          </button>
+        </div>
       </div>
 
       {/* Metrics Row */}
@@ -216,7 +271,7 @@ export default function MyItemsPage({ onNavigate }) {
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Active / Available</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Active & Listed</p>
             <h3 className="text-2xl font-black text-emerald-600 mt-1">{availableCount}</h3>
           </div>
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
@@ -226,11 +281,11 @@ export default function MyItemsPage({ onNavigate }) {
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Unavailable / In Use</p>
-            <h3 className="text-2xl font-black text-amber-600 mt-1">{unavailableCount}</h3>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pending Requests</p>
+            <h3 className="text-2xl font-black text-amber-600 mt-1">{totalPendingRequests}</h3>
           </div>
           <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
-            <AlertCircle className="w-5 h-5" />
+            <Clock className="w-5 h-5" />
           </div>
         </div>
       </div>
@@ -265,11 +320,11 @@ export default function MyItemsPage({ onNavigate }) {
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full sm:w-48 px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs bg-white text-slate-700"
+            className="px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs bg-white text-slate-700"
           >
             <option value="all">All Categories</option>
             {categories.map((c) => (
@@ -277,6 +332,17 @@ export default function MyItemsPage({ onNavigate }) {
                 {c.name}
               </option>
             ))}
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs bg-white text-slate-700"
+          >
+            <option value="all">All Statuses</option>
+            <option value="available">🟢 Available</option>
+            <option value="unavailable">🔴 Unavailable</option>
+            <option value="maintenance">🟡 Maintenance</option>
           </select>
 
           <button
@@ -304,9 +370,9 @@ export default function MyItemsPage({ onNavigate }) {
           <div className="space-y-1">
             <h3 className="text-lg font-bold text-slate-800">No items found</h3>
             <p className="text-sm text-slate-500 max-w-md mx-auto">
-              {searchTerm || selectedCategory !== 'all'
-                ? 'No items match your search filters.'
-                : "You haven't listed any rental equipment yet. Add your first item to start earning."}
+              {searchTerm || selectedCategory !== 'all' || statusFilter !== 'all'
+                ? 'No items match your active search filters.'
+                : "You haven't listed any rental equipment yet. Add your first item to start receiving customer requests."}
             </p>
           </div>
           <button
@@ -323,6 +389,11 @@ export default function MyItemsPage({ onNavigate }) {
             const primaryImage = hasImages
               ? item.images[0]
               : 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=600&q=80';
+
+            const isAvailable = item.status === 'available';
+            const isToggling = togglingStatusId === item.id;
+            const pendingReqs = item.pending_requests || 0;
+            const totalReqs = item.total_requests || 0;
 
             return (
               <div
@@ -341,23 +412,36 @@ export default function MyItemsPage({ onNavigate }) {
                         e.target.src = 'https://placehold.co/400x300?text=No+Image';
                       }}
                     />
+
+                    {/* Category Tag */}
                     <div className="absolute top-3 left-3">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/90 backdrop-blur-md text-slate-800 shadow-sm border border-slate-200/50">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/95 backdrop-blur-md text-slate-800 shadow-sm border border-slate-200/50">
                         {item.category_name || 'Item'}
                       </span>
                     </div>
 
+                    {/* Status Badge */}
                     <div className="absolute top-3 right-3">
                       <span
                         className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${
-                          item.status === 'available'
+                          isAvailable
                             ? 'bg-emerald-500 text-white'
-                            : 'bg-amber-500 text-white'
+                            : item.status === 'maintenance'
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-red-500 text-white'
                         }`}
                       >
-                        {item.status === 'available' ? 'Available' : 'Unavailable'}
+                        {isAvailable ? 'Available' : item.status === 'maintenance' ? 'Maintenance' : 'Unavailable'}
                       </span>
                     </div>
+
+                    {/* Pending Requests Callout */}
+                    {pendingReqs > 0 && (
+                      <div className="absolute bottom-2 left-2 bg-amber-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-sm shadow-md flex items-center gap-1 animate-pulse">
+                        <Clock className="w-3 h-3" />
+                        <span>{pendingReqs} pending request{pendingReqs > 1 ? 's' : ''}!</span>
+                      </div>
+                    )}
 
                     {hasImages && item.images.length > 1 && (
                       <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-md backdrop-blur-sm">
@@ -366,10 +450,15 @@ export default function MyItemsPage({ onNavigate }) {
                     )}
                   </div>
 
-                  {/* Body */}
+                  {/* Card Content */}
                   <div className="p-5 space-y-3">
                     <div className="space-y-1">
-                      <h3 className="font-bold text-slate-900 text-base line-clamp-1">{item.name}</h3>
+                      <h3
+                        onClick={() => onSelectItem && onSelectItem(item.id)}
+                        className="font-bold text-slate-900 text-base line-clamp-1 hover:text-emerald-700 cursor-pointer transition"
+                      >
+                        {item.name}
+                      </h3>
                       <p className="text-xs text-slate-500 line-clamp-2">
                         {item.description || 'No additional description provided.'}
                       </p>
@@ -380,25 +469,73 @@ export default function MyItemsPage({ onNavigate }) {
                       <span className="truncate">{item.location}</span>
                     </div>
 
-                    <div className="pt-2 flex items-baseline justify-between border-t border-slate-100">
+                    {/* Pricing Info */}
+                    <div className="pt-2 border-t border-slate-100 flex items-baseline justify-between">
                       <div>
-                        <span className="text-xs text-slate-400">Rate: </span>
+                        <span className="text-xs text-slate-400">Daily: </span>
                         <span className="text-lg font-black text-emerald-700">
                           Rs. {parseFloat(item.price_per_day).toLocaleString()}
                         </span>
                         <span className="text-xs text-slate-400"> / day</span>
                       </div>
+
+                      {item.deposit_amount && (
+                        <div className="text-right text-[11px] text-slate-500">
+                          Deposit: <strong className="text-slate-700">Rs. {parseFloat(item.deposit_amount).toLocaleString()}</strong>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rental Request Activity Stats */}
+                    <div className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between text-xs text-slate-600">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Total Requests: <strong>{totalReqs}</strong></span>
+                      </div>
+
+                      <button
+                        onClick={() => onNavigate && onNavigate('requests')}
+                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-0.5"
+                      >
+                        View <ArrowRight className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
                 </div>
 
                 {/* Actions Footer */}
                 <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+                  {/* Quick Toggle Status */}
+                  <button
+                    onClick={() => handleToggleStatus(item)}
+                    disabled={isToggling}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border transition shadow-sm ${
+                      isAvailable
+                        ? 'bg-white hover:bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-white hover:bg-emerald-50 text-emerald-700 border-emerald-200'
+                    }`}
+                    title={isAvailable ? 'Temporarily pause requests for this item' : 'Activate item to receive rental requests'}
+                  >
+                    {isToggling ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : isAvailable ? (
+                      <>
+                        <ToggleRight className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Active</span>
+                      </>
+                    ) : (
+                      <>
+                        <ToggleLeft className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Inactive</span>
+                      </>
+                    )}
+                  </button>
+
                   <button
                     onClick={() => handleOpenEditModal(item)}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition shadow-sm"
                   >
-                    <Edit3 className="w-3.5 h-3.5 text-slate-500" /> Edit Item
+                    <Edit3 className="w-3.5 h-3.5 text-slate-500" /> Edit Listing
                   </button>
 
                   <button

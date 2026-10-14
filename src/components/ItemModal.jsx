@@ -10,8 +10,19 @@ import {
   Tag,
   AlertCircle,
   CheckCircle2,
-  Package
+  Package,
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
+
+const PRESET_IMAGES = [
+  { name: 'Drill / Power Tool', url: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=800&q=80' },
+  { name: 'DSLR / Mirrorless Camera', url: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80' },
+  { name: 'HD Projector & Sound', url: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=800&q=80' },
+  { name: 'Camping Tent & Gear', url: 'https://images.unsplash.com/photo-1510312305653-8ed496efae75?auto=format&fit=crop&w=800&q=80' },
+  { name: 'Generator / Industrial', url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80' },
+  { name: 'Mountain Bike / Vehicle', url: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=800&q=80' }
+];
 
 export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, categories }) {
   const { token } = useAuth();
@@ -22,6 +33,8 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
     category_id: '',
     description: '',
     price_per_day: '',
+    price_per_hour: '',
+    deposit_amount: '',
     location: '',
     status: 'available',
   });
@@ -38,6 +51,8 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
         category_id: itemToEdit.category_id ? String(itemToEdit.category_id) : '',
         description: itemToEdit.description || '',
         price_per_day: itemToEdit.price_per_day ? String(itemToEdit.price_per_day) : '',
+        price_per_hour: itemToEdit.price_per_hour ? String(itemToEdit.price_per_hour) : '',
+        deposit_amount: itemToEdit.deposit_amount ? String(itemToEdit.deposit_amount) : '',
         location: itemToEdit.location || '',
         status: itemToEdit.status || 'available',
       });
@@ -48,6 +63,8 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
         category_id: categories && categories.length > 0 ? String(categories[0].id) : '',
         description: '',
         price_per_day: '',
+        price_per_hour: '',
+        deposit_amount: '',
         location: '',
         status: 'available',
       });
@@ -84,6 +101,21 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
     }
   };
 
+  const applyPresetImage = (url) => {
+    const firstEmptyIndex = images.findIndex((img) => !img || !img.trim());
+    if (firstEmptyIndex !== -1) {
+      const updated = [...images];
+      updated[firstEmptyIndex] = url;
+      setImages(updated);
+    } else if (images.length < 5) {
+      setImages([...images, url]);
+    } else {
+      const updated = [...images];
+      updated[0] = url;
+      setImages(updated);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -94,9 +126,17 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
 
     const price = parseFloat(formData.price_per_day);
     if (isNaN(price) || price < 0) {
-      setError('Please provide a valid positive price.');
+      setError('Please provide a valid positive daily rental rate.');
       return;
     }
+
+    const pricePerHour = formData.price_per_hour && formData.price_per_hour.trim()
+      ? parseFloat(formData.price_per_hour)
+      : null;
+
+    const deposit = formData.deposit_amount && formData.deposit_amount.trim()
+      ? parseFloat(formData.deposit_amount)
+      : null;
 
     setLoading(true);
     setError('');
@@ -108,6 +148,8 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
       category_id: parseInt(formData.category_id, 10),
       description: formData.description.trim() || null,
       price_per_day: price,
+      price_per_hour: pricePerHour,
+      deposit_amount: deposit,
       location: formData.location.trim(),
       status: formData.status,
       images: cleanImages,
@@ -152,10 +194,10 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-900">
-                {isEditMode ? 'Edit Rental Item' : 'Add New Rental Item'}
+                {isEditMode ? 'Edit Rental Listing' : 'Add New Rental Equipment'}
               </h3>
               <p className="text-xs text-slate-500">
-                {isEditMode ? 'Update your listing details and pricing' : 'List a new item for rent in Sri Lanka'}
+                {isEditMode ? 'Update your listing details, pricing, and availability' : 'List an item for rent to verified customers in Sri Lanka'}
               </p>
             </div>
           </div>
@@ -188,12 +230,12 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
               required
               value={formData.name}
               onChange={handleChange}
-              placeholder="e.g. Bosch Professional Rotary Hammer Drill"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+              placeholder="e.g. Bosch Heavy Duty Hammer Drill 800W"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium"
             />
           </div>
 
-          {/* Category & Price */}
+          {/* Category & Location */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
@@ -217,7 +259,30 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
-                Daily Rental Rate (LKR / Day) *
+                Location (City / District) *
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  name="location"
+                  required
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="e.g. Colombo 05, Havelock Town"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing Row: Daily Rate, Hourly Rate, Security Deposit */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                Daily Rate (LKR) *
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-slate-400">
@@ -232,61 +297,82 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
                   value={formData.price_per_day}
                   onChange={handleChange}
                   placeholder="2500"
-                  className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                  className="w-full pl-11 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                Hourly Rate (Optional)
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-slate-400">
+                  Rs.
+                </span>
+                <input
+                  type="number"
+                  name="price_per_hour"
+                  min="0"
+                  step="25"
+                  value={formData.price_per_hour}
+                  onChange={handleChange}
+                  placeholder="400"
+                  className="w-full pl-11 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                Deposit (Optional)
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-slate-400">
+                  Rs.
+                </span>
+                <input
+                  type="number"
+                  name="deposit_amount"
+                  min="0"
+                  step="500"
+                  value={formData.deposit_amount}
+                  onChange={handleChange}
+                  placeholder="5000"
+                  className="w-full pl-11 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                 />
               </div>
             </div>
           </div>
 
-          {/* Location & Status */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
-                Location (City / District) *
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  name="location"
-                  required
-                  value={formData.location}
-                  onChange={handleChange}
-                  placeholder="e.g. Colombo 03 / Nugegoda"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
-                Availability Status
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-white"
-              >
-                <option value="available">🟢 Available for Rent</option>
-                <option value="unavailable">🔴 Unavailable / Under Maintenance</option>
-              </select>
-            </div>
+          {/* Status & Availability */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+              Availability Status
+            </label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-white font-medium"
+            >
+              <option value="available">🟢 Available for Rent (Accepting Requests)</option>
+              <option value="unavailable">🔴 Unavailable (Hidden from Discovery)</option>
+              <option value="maintenance">🟡 Maintenance / Servicing (Temporarily Paused)</option>
+            </select>
           </div>
 
           {/* Description */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
-              Description & Rental Terms
+              Description & Specifications
             </label>
             <textarea
               name="description"
               rows={3}
               value={formData.description}
               onChange={handleChange}
-              placeholder="Describe condition, specifications, deposit requirements, included accessories..."
+              placeholder="Describe condition, specifications, included accessories, usage guidelines..."
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
             />
           </div>
@@ -296,9 +382,9 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
             <div className="flex items-center justify-between">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                  Item Image URLs
+                  Item Images
                 </label>
-                <p className="text-[11px] text-slate-400">Provide direct image URLs for photo gallery (up to 5 images)</p>
+                <p className="text-[11px] text-slate-400">Paste direct URLs or pick from presets below (up to 5 images)</p>
               </div>
 
               {images.length < 5 && (
@@ -312,6 +398,24 @@ export default function ItemModal({ isOpen, onClose, onSaved, itemToEdit, catego
               )}
             </div>
 
+            {/* Quick Preset Selector */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-emerald-600" /> Quick Preset:
+              </span>
+              {PRESET_IMAGES.map((preset, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => applyPresetImage(preset.url)}
+                  className="text-[10px] font-semibold px-2 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 rounded-lg border border-slate-200 transition"
+                >
+                  + {preset.name}
+                </button>
+              ))}
+            </div>
+
+            {/* URL Inputs */}
             <div className="space-y-2.5">
               {images.map((imgUrl, idx) => (
                 <div key={idx} className="flex items-center gap-2">
