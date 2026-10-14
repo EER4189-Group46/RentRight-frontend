@@ -9,6 +9,7 @@ import ItemDetailsPage from './pages/ItemDetailsPage';
 import RentalRequestsPage from './pages/RentalRequestsPage';
 import PaymentHistoryPage from './pages/PaymentHistoryPage';
 import EarningsPage from './pages/EarningsPage';
+import MessagesPage from './pages/MessagesPage';
 import {
   Package,
   Search,
@@ -17,10 +18,11 @@ import {
   CreditCard,
   DollarSign,
   Calendar,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 
-function Navigation({ activeTab, setActiveTab, setSelectedItemId }) {
+function Navigation({ activeTab, setActiveTab, setSelectedItemId, unreadCount }) {
   const { user, token, isAuthenticated } = useAuth();
   const isProvider = user?.role === 'provider';
   const isRenter = user?.role === 'renter';
@@ -165,6 +167,21 @@ function Navigation({ activeTab, setActiveTab, setSelectedItemId }) {
             </>
           )}
 
+          {/* Messages Tab – shown to all authenticated users */}
+          {isAuthenticated && (
+            <button
+              onClick={() => handleNav('messages')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                activeTab === 'messages'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4 text-emerald-600" />
+              <span>Messages</span>
+            </button>
+          )}
+
           {/* Auth State */}
           {isAuthenticated ? (
             <button
@@ -213,8 +230,10 @@ function Navigation({ activeTab, setActiveTab, setSelectedItemId }) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('browse'); // 'browse', 'item-details', 'my-items', 'requests', 'payments', 'earnings', 'login', 'register', 'profile'
+  const [activeTab, setActiveTab] = useState('browse');
   const [selectedItemId, setSelectedItemId] = useState(null);
+  // Holds the pre-selected recipient when navigating to Messages from item details
+  const [messageRecipient, setMessageRecipient] = useState(null);
 
   const handleSelectItem = (itemId) => {
     setSelectedItemId(itemId);
@@ -227,12 +246,28 @@ export default function App() {
     setActiveTab('browse');
   };
 
+  /**
+   * Extended navigate handler that accepts an optional second argument.
+   * When navigating to 'messages' from ItemDetailsPage, the second arg is
+   * { user, item } describing the pre-selected conversation recipient.
+   */
+  const handleNavigate = (tab, payload = null) => {
+    setSelectedItemId(null);
+    if (tab === 'messages' && payload) {
+      setMessageRecipient(payload);
+    } else {
+      setMessageRecipient(null);
+    }
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <AuthProvider>
       <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between">
         <Navigation
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={(tab) => handleNavigate(tab)}
           setSelectedItemId={setSelectedItemId}
         />
 
@@ -240,7 +275,7 @@ export default function App() {
           {(activeTab === 'browse' || activeTab === 'home') && (
             <BrowsePage
               onSelectItem={handleSelectItem}
-              onNavigate={setActiveTab}
+              onNavigate={handleNavigate}
             />
           )}
 
@@ -248,28 +283,34 @@ export default function App() {
             <ItemDetailsPage
               itemId={selectedItemId}
               onBack={handleBackToBrowse}
-              onNavigate={setActiveTab}
+              onNavigate={handleNavigate}
             />
           )}
 
           {activeTab === 'my-items' && (
             <MyItemsPage
-              onNavigate={setActiveTab}
+              onNavigate={handleNavigate}
               onSelectItem={handleSelectItem}
             />
           )}
           {(activeTab === 'requests' || activeTab === 'my-requests') && (
             <RentalRequestsPage
-              onNavigate={setActiveTab}
+              onNavigate={handleNavigate}
               onSelectItem={handleSelectItem}
               initialView={activeTab === 'my-requests' ? 'mine' : undefined}
             />
           )}
-          {activeTab === 'payments' && <PaymentHistoryPage onNavigate={setActiveTab} />}
-          {activeTab === 'earnings' && <EarningsPage onNavigate={setActiveTab} />}
-          {activeTab === 'login' && <LoginPage onNavigate={setActiveTab} />}
-          {activeTab === 'register' && <RegisterPage onNavigate={setActiveTab} />}
-          {activeTab === 'profile' && <ProfilePage onNavigate={setActiveTab} />}
+          {activeTab === 'payments' && <PaymentHistoryPage onNavigate={handleNavigate} />}
+          {activeTab === 'earnings' && <EarningsPage onNavigate={handleNavigate} />}
+          {activeTab === 'login' && <LoginPage onNavigate={handleNavigate} />}
+          {activeTab === 'register' && <RegisterPage onNavigate={handleNavigate} />}
+          {activeTab === 'profile' && <ProfilePage onNavigate={handleNavigate} />}
+          {activeTab === 'messages' && (
+            <MessagesPage
+              initialRecipient={messageRecipient}
+              onNavigate={handleNavigate}
+            />
+          )}
         </main>
 
         <footer className="bg-white border-t border-slate-200 py-6 mt-12">
