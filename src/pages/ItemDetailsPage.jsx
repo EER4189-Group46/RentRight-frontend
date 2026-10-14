@@ -19,7 +19,8 @@ import {
   Send,
   ArrowRight,
   Package,
-  Edit3
+  Edit3,
+  MessageSquare
 } from 'lucide-react';
 
 export default function ItemDetailsPage({ itemId, onBack, onNavigate }) {
@@ -148,6 +149,31 @@ export default function ItemDetailsPage({ itemId, onBack, onNavigate }) {
       setRequestError(err.message || 'Error submitting rental request');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  /**
+   * Navigate to MessagesPage pre-loaded with this item's provider as the recipient.
+   * Renters and guests click "Message Provider" — guests are sent to login first.
+   */
+  const handleMessageProvider = () => {
+    if (!isAuthenticated) {
+      if (onNavigate) onNavigate('login');
+      return;
+    }
+    if (onNavigate) {
+      onNavigate('messages', {
+        user: {
+          id: item.provider_id,
+          name: item.provider_name,
+          role: 'provider',
+          email: item.provider_email || '',
+        },
+        item: {
+          id: item.id,
+          name: item.name,
+        },
+      });
     }
   };
 
@@ -465,6 +491,18 @@ export default function ItemDetailsPage({ itemId, onBack, onNavigate }) {
                 </div>
               )}
             </div>
+
+            {/* Message Provider Button – visible to renters & guests (not the listing owner) */}
+            {user?.id !== item.provider_id && (
+              <button
+                type="button"
+                onClick={handleMessageProvider}
+                className="w-full mt-2 py-2.5 px-4 bg-slate-900 hover:bg-slate-700 active:bg-slate-800 text-white font-bold text-xs rounded-xl transition shadow-sm flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Message Provider
+              </button>
+            )}
           </div>
         </div>
       </div>
